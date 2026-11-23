@@ -1,0 +1,42 @@
+{
+  "name": "mritoolbox",
+  "version": "3.0.0",
+  "private": true,
+  "description": "MRI calculations from mritoolbox.com: Ernst angle, contrast optimisation, relaxation curve fitting, MP-RAGE simulation and a database of published T1 and T2 values.",
+  "keywords": [
+    "mri",
+    "relaxometry",
+    "t1",
+    "t2",
+    "ernst angle",
+    "curve fitting",
+    "mp-rage",
+    "epg"
+  ],
+  "homepage": "https://www.mritoolbox.com",
+  "author": "Alan McMillan",
+  "license": "UNLICENSED",
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./data/parameter-database.json": "./data/parameter-database.json",
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "data",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node scripts/embed-data.mjs && tsc -p tsconfig.json",
+    "prepack": "npm run build"
+  }
+}
