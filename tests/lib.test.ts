@@ -66,10 +66,13 @@ describe('MP-RAGE EPG simulation', () => {
   const seq = { flipAngle: 9, spoilIncrement: 50, tr: 7, td1: 330, td2: 830, np: 160 };
   const a = { pd: 1, t1: 1450, t2: 100 };
   const b = { pd: 0.92, t1: 750, t2: 75 };
-  it('reproduces the reference implementation on the previous site', () => {
+  it('gives the corrected values on the previous site case', () => {
+    // The 2012 algorithm gave 0.024424690025312324 and 0.047124053975078295.
+    // These values are the corrected code's; tests/epg.test.ts shows that its
+    // signal trains for both tissues match an isochromat simulation to 1e-6.
     const r = simulateMprageImage(a, b, seq);
-    expect(r.signalA).toBeCloseTo(0.024424690025312324, 12);
-    expect(r.signalB).toBeCloseTo(0.047124053975078295, 12);
+    expect(r.signalA).toBeCloseTo(0.02435879570540178, 12);
+    expect(r.signalB).toBeCloseTo(0.047107333947596135, 12);
     expect(r.steadyState).toBe(true);
   });
   it('ideal spoiling gives a smooth approach to steady state', () => {

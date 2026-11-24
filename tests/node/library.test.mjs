@@ -43,14 +43,23 @@ test('GRE contrast reproduces the previous site', () => {
   close(r.signals[0], 0.199, 3);
 });
 
-test('MP-RAGE EPG reproduces the reference implementation on the previous site', () => {
+test('MP-RAGE EPG gives the corrected values on the previous site case', () => {
+  // Validated against an isochromat simulation in tests/epg.test.ts; the 2012
+  // algorithm gave 0.024424690025312324 and 0.047124053975078295.
   const r = simulateMprageImage(
     { pd: 1, t1: 1450, t2: 100 },
     { pd: 0.92, t1: 750, t2: 75 },
     { flipAngle: 9, spoilIncrement: 50, tr: 7, td1: 330, td2: 830, np: 160 },
   );
-  close(r.signalA, 0.024424690025312324, 12);
-  close(r.signalB, 0.047124053975078295, 12);
+  close(r.signalA, 0.02435879570540178, 12);
+  close(r.signalB, 0.047107333947596135, 12);
+  // One inversion cycle, where the corrected and the 2012 algorithms agree.
+  const one = simulateMprageImage(
+    { pd: 1, t1: 1450, t2: 100 },
+    { pd: 0.92, t1: 750, t2: 75 },
+    { flipAngle: 9, spoilIncrement: 50, tr: 7, td1: 330, td2: 830, np: 160, maxLoops: 1 },
+  );
+  assert.deepEqual(one.loops, [1, 1]);
 });
 
 test('curve fitting and pixel-wise mapping recover T2', () => {

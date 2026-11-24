@@ -104,6 +104,11 @@ export function checkMprage(
   } else if (!Number.isInteger(np) || np < 1 || np > 4096) {
     check.errors.push('The number of pulses must be a whole number between 1 and 4096.');
   }
+  const loops = seq.maxLoops;
+  if (loops !== undefined && !(Number.isInteger(loops) && loops >= 1 && loops <= 1000))
+    check.errors.push(
+      'The number of inversion cycles (maxLoops) must be a whole number between 1 and 1000.',
+    );
   return check;
 }
 

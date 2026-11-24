@@ -85,7 +85,7 @@ export const MODELS: Record<ModelId, ModelDef> = {
     fitA: true,
     range: [10, 10000],
     equation:
-      'M = M<sub>0</sub> (1 − 2A e<sup>−TI/T<sub>1</sub></sup> + e<sup>−TR/T<sub>1</sub></sup>)',
+      'M = M<sub>0</sub> (1 − 2A e<sup>−TI/T<sub>1</sub></sup> + (2A − 1) e<sup>−TR/T<sub>1</sub></sup>)',
     example: {
       x: [50, 100, 200, 400, 800, 1600, 3200],
       y: [-709, -644, -501, -249, 131, 593, 907],
