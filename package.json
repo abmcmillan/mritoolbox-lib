@@ -1,7 +1,6 @@
 {
   "name": "mritoolbox",
-  "version": "3.0.0",
-  "private": true,
+  "version": "3.1.0",
   "description": "MRI calculations from mritoolbox.com: Ernst angle, contrast optimisation, relaxation curve fitting, MP-RAGE simulation and a database of published T1 and T2 values.",
   "keywords": [
     "mri",
@@ -49,7 +48,8 @@
     "build": "node scripts/embed-data.mjs && tsc -p tsconfig.json && tsc -p tsconfig.cli.json && node scripts/build-info.mjs",
     "test": "npm run build && vitest run && npm run test:node",
     "test:node": "node --test tests/node/library.test.mjs tests/node/cli.test.mjs",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "prepublishOnly": "npm test"
   },
   "devDependencies": {
     "@types/node": "22.20.5",

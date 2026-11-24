@@ -421,8 +421,12 @@ describe('package', () => {
   // npm sets npm_execpath when the tests run through `npm test` or `npm run test:node`.
   const npmCli = process.env.npm_execpath;
   test('installs from its tarball and runs as `mritoolbox`', { skip: !npmCli && 'needs npm (run through npm)' }, () => {
+    // `npm publish --dry-run` runs these tests (prepublishOnly) and passes
+    // npm_config_dry_run down, which would make the pack below write nothing.
+    const env = { ...process.env };
+    delete env.npm_config_dry_run;
     const npm = (args, cwd) => {
-      const r = spawnSync(process.execPath, [npmCli, ...args], { cwd, encoding: 'utf8' });
+      const r = spawnSync(process.execPath, [npmCli, ...args], { cwd, env, encoding: 'utf8' });
       assert.equal(r.status, 0, `npm ${args.join(' ')}: ${r.stderr}`);
       return r.stdout;
     };

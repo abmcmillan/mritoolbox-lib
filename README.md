@@ -12,15 +12,21 @@ the same modules at `https://www.mritoolbox.com/lib/`.
 
 ## Install
 
-The package is not on npm yet. Install it from GitHub (Node 20 or later):
+From npm (Node 20 or later):
+
+```sh
+npm install mritoolbox
+```
+
+To try unreleased changes, install it from GitHub instead:
 
 ```sh
 npm install github:abmcmillan/mritoolbox-lib
 ```
 
-npm builds it on install with its `prepare` script (`npm run build`). Recent
-npm releases list that script under `allow-scripts`; `npm approve-scripts
-mritoolbox` records the approval in your `package.json`.
+npm then builds it on install with its `prepare` script (`npm run build`).
+Recent npm releases list that script under `allow-scripts`; `npm
+approve-scripts mritoolbox` records the approval in your `package.json`.
 
 Or build it from a clone:
 
@@ -28,10 +34,11 @@ Or build it from a clone:
 git clone https://github.com/abmcmillan/mritoolbox-lib.git
 cd mritoolbox-lib
 npm ci          # installs the compiler and builds dist/
-npm pack        # optional: mritoolbox-3.0.0.tgz, for `npm install ./mritoolbox-3.0.0.tgz`
+npm pack        # optional: mritoolbox-3.1.0.tgz, for `npm install ./mritoolbox-3.1.0.tgz`
 ```
 
-Either way it is imported as `mritoolbox`. It has no runtime dependencies.
+However it is installed, it is imported as `mritoolbox`. It has no runtime
+dependencies.
 
 ## Use
 
@@ -110,8 +117,7 @@ The database file is also exported as `mritoolbox/data/parameter-database.json`.
 The package also provides a `mritoolbox` command for Node 20 or later on
 macOS, Linux and Windows, with no dependencies. Once the package is installed
 (see [Install](#install)) run it with `npx mritoolbox`, or as `mritoolbox` in
-an npm script; after an npm release `npx mritoolbox …` will work without
-installing first. The command is a separate Node front end in `src/cli/`: it
+an npm script; `npx mritoolbox …` also works without installing first. The command is a separate Node front end in `src/cli/`: it
 is not exported from `mritoolbox`, so the library stays free of Node APIs and
 runs unchanged in browsers.
 
@@ -250,8 +256,21 @@ are.
 
 ## Publishing
 
-The package is marked `"private": true` so that it cannot be published by
-accident. Remove `"private"` before `npm publish`.
+Releases are published to npm by GitHub Actions
+([`.github/workflows/publish.yml`](.github/workflows/publish.yml)) when a
+GitHub release is published, with npm trusted publishing: no npm token is
+stored anywhere, and npm records where each version was built (provenance).
+
+```sh
+npm version 3.2.0             # sets the version in package.json and package-lock.json, commits, tags v3.2.0
+git push --follow-tags
+gh release create v3.2.0 --generate-notes
+```
+
+The workflow checks that the tag matches `package.json`, then runs
+`npm publish`, which runs the tests first (`prepublishOnly`). Use a patch
+version for fixes, a minor one for additions, and a major one for changes
+that can break existing code.
 
 ## Licence
 

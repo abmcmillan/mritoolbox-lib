@@ -1,0 +1,45 @@
+name: Publish to npm
+
+# Publishes the package when a GitHub release is published (see "Publishing" in
+# the README). It uses npm trusted publishing: npm accepts this workflow's
+# short-lived GitHub identity instead of a stored token, so the package's
+# settings on npmjs.com must name abmcmillan/mritoolbox-lib and publish.yml as
+# its trusted publisher. npm adds provenance to each version it publishes.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # lets npm verify that this workflow is publishing
+    steps:
+      # actions/checkout v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      # actions/setup-node v7.1.0. Node 26 ships npm 11, which supports trusted publishing.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 26
+          registry-url: https://registry.npmjs.org
+      - name: Check that the release tag matches package.json
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "${GITHUB_REF_NAME#v}" != "$version" ]; then
+            echo "::error::Release tag $GITHUB_REF_NAME does not match version $version in package.json."
+            exit 1
+          fi
+      - run: npm ci
+      # prepublishOnly runs the full test suite before anything is uploaded.
+      - run: npm publish
