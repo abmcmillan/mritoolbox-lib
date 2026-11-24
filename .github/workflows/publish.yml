@@ -1,10 +1,12 @@
 name: Publish to npm
 
-# Publishes the package when a GitHub release is published (see "Publishing" in
-# the README). It uses npm trusted publishing: npm accepts this workflow's
-# short-lived GitHub identity instead of a stored token, so the package's
-# settings on npmjs.com must name abmcmillan/mritoolbox-lib and publish.yml as
-# its trusted publisher. npm adds provenance to each version it publishes.
+# Stages the package on npm when a GitHub release is published (see
+# "Publishing" in the README). It uses npm trusted publishing: npm accepts this
+# workflow's short-lived GitHub identity instead of a stored token, so the
+# package's settings on npmjs.com must name abmcmillan/mritoolbox-lib and
+# publish.yml as its trusted publisher. That publisher may only stage: a
+# staged version goes public when a maintainer approves it with 2FA on
+# npmjs.com. npm adds provenance to each version.
 
 on:
   release:
@@ -28,7 +30,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      # actions/setup-node v7.1.0. Node 26 ships npm 11, which supports trusted publishing.
+      # actions/setup-node v7.1.0. Node 26 ships npm 11 (11.20 in Node 26.13), which
+      # supports trusted publishing and staging (11.15 or later).
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: 26
@@ -41,5 +44,5 @@ jobs:
             exit 1
           fi
       - run: npm ci
-      # prepublishOnly runs the full test suite before anything is uploaded.
-      - run: npm publish
+      # Like npm publish, this runs prepublishOnly (the full test suite) first.
+      - run: npm stage publish

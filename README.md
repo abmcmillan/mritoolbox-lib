@@ -256,10 +256,12 @@ are.
 
 ## Publishing
 
-Releases are published to npm by GitHub Actions
+Releases are built by GitHub Actions
 ([`.github/workflows/publish.yml`](.github/workflows/publish.yml)) when a
-GitHub release is published, with npm trusted publishing: no npm token is
-stored anywhere, and npm records where each version was built (provenance).
+GitHub release is published, and staged on npm with npm trusted publishing:
+no npm token is stored anywhere, and npm records where each version was built
+(provenance). A staged version is not public until a maintainer approves it
+with two-factor authentication, so nothing reaches npm from GitHub alone.
 
 ```sh
 npm version 3.2.0             # sets the version in package.json and package-lock.json, commits, tags v3.2.0
@@ -268,9 +270,11 @@ gh release create v3.2.0 --generate-notes
 ```
 
 The workflow checks that the tag matches `package.json`, then runs
-`npm publish`, which runs the tests first (`prepublishOnly`). Use a patch
-version for fixes, a minor one for additions, and a major one for changes
-that can break existing code.
+`npm stage publish`, which runs the tests first (`prepublishOnly`). When it
+has finished, approve the version on npmjs.com (the package's Staged
+Packages tab) or with `npm stage list mritoolbox` and
+`npm stage approve <stage-id>`. Use a patch version for fixes, a minor one for
+additions, and a major one for changes that can break existing code.
 
 ## Licence
 
