@@ -427,7 +427,10 @@ describe('package', () => {
     };
     const packs = join(tmp, 'pack');
     mkdirSync(packs);
-    const [packed] = JSON.parse(npm(['pack', '--ignore-scripts', '--json', '--pack-destination', packs], root));
+    // npm 10 (Node 20 and 22) runs `prepare` despite --ignore-scripts and prints the build
+    // before the JSON; the rebuilt dist/ is the same bytes.
+    const packOut = npm(['pack', '--ignore-scripts', '--json', '--pack-destination', packs], root);
+    const [packed] = JSON.parse(packOut.slice(packOut.search(/^\[/mu)));
     const files = packed.files.map((f) => f.path);
     for (const file of ['dist/index.js', 'dist/cli/index.js', 'dist/cli/map-worker.js', 'LICENSE', 'data/parameter-database.json'])
       assert.ok(files.includes(file), file);
