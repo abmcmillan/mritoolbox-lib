@@ -34,7 +34,7 @@ Or build it from a clone:
 git clone https://github.com/abmcmillan/mritoolbox-lib.git
 cd mritoolbox-lib
 npm ci          # installs the compiler and builds dist/
-npm pack        # optional: mritoolbox-3.1.0.tgz, for `npm install ./mritoolbox-3.1.0.tgz`
+npm pack        # optional: mritoolbox-3.1.1.tgz, for `npm install ./mritoolbox-3.1.1.tgz`
 ```
 
 However it is installed, it is imported as `mritoolbox`. It has no runtime

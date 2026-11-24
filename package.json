@@ -1,6 +1,6 @@
 {
   "name": "mritoolbox",
-  "version": "3.1.0",
+  "version": "3.1.1",
   "description": "MRI calculations from mritoolbox.com: Ernst angle, contrast optimisation, relaxation curve fitting, MP-RAGE simulation and a database of published T1 and T2 values.",
   "keywords": [
     "mri",
