@@ -1,3 +1,6 @@
 # Check out with LF line endings on every platform (Windows included), so the
 # sources, and the dist/ files compiled from them, are the same bytes everywhere.
 * text=auto eol=lf
+
+# GitHub archives (what `npm install github:...` downloads) fill in the commit here.
+scripts/git-commit.txt export-subst

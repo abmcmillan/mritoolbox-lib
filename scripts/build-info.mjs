@@ -1,8 +1,8 @@
 // Records the git commit of this checkout in dist/cli/build-info.json, so that
-// `mritoolbox --version` can report it. Outside a git checkout of this
-// repository the commit is null (GITHUB_SHA is used when set).
+// `mritoolbox --version` can report it: from the git checkout, else from a
+// GitHub archive (scripts/git-commit.txt), else GITHUB_SHA, else null.
 import { execFileSync } from 'node:child_process';
-import { realpathSync, writeFileSync } from 'node:fs';
+import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -19,6 +19,12 @@ try {
   }
 } catch {
   // No git, or not a checkout.
+}
+if (!commit) {
+  // A `git archive` of the repository (a GitHub tarball, as npm installs from
+  // GitHub) has the commit written into this file (export-subst in .gitattributes).
+  const archived = readFileSync(new URL('git-commit.txt', import.meta.url), 'utf8').trim();
+  if (/^[0-9a-f]{40}$/u.test(archived)) commit = archived;
 }
 if (!commit && process.env.GITHUB_SHA) commit = process.env.GITHUB_SHA;
 
