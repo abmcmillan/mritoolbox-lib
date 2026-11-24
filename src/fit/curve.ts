@@ -17,7 +17,7 @@ export interface CurveInput {
   fitConstant?: boolean;
   /** Search range of the fitted parameter, in its own unit (default: the model's range). */
   range?: readonly [number, number];
-  /** Starting values. Without them the fit starts from a search over the whole range. */
+  /** A starting value: its rate is refined as well as every minimum of the search over the whole range, and the lowest wins. M0, A and C are always solved exactly. */
   initial?: InitialGuess;
 }
 
