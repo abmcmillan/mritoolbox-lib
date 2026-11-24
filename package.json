@@ -13,9 +13,16 @@
     "mp-rage",
     "epg"
   ],
-  "homepage": "https://www.mritoolbox.com",
+  "homepage": "https://github.com/abmcmillan/mritoolbox-lib#readme",
+  "bugs": {
+    "url": "https://github.com/abmcmillan/mritoolbox-lib/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/abmcmillan/mritoolbox-lib.git"
+  },
   "author": "Alan McMillan",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "type": "module",
   "sideEffects": false,
   "engines": {
@@ -37,6 +44,12 @@
   ],
   "scripts": {
     "build": "node scripts/embed-data.mjs && tsc -p tsconfig.json",
-    "prepack": "npm run build"
+    "test": "npm run build && vitest run && npm run test:node",
+    "test:node": "node --test tests/node/library.test.mjs",
+    "prepare": "npm run build"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3",
+    "vitest": "5.1.1"
   }
 }
