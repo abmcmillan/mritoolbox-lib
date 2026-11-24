@@ -45,8 +45,9 @@ describe('README', () => {
 
   it('lists only names the package exports', () => {
     // The "Exports" column of the table under "What is in it".
+    const start = readme.indexOf('## What is in it');
     const rows = readme
-      .slice(readme.indexOf('## What is in it'))
+      .slice(start, readme.indexOf('\n## ', start + 1))
       .split('\n')
       .filter((line) => line.startsWith('| ') && !/^\| (Area|-)/u.test(line));
     const named = rows.flatMap((row) =>
