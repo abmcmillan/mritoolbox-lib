@@ -123,7 +123,7 @@ describe('contrast', () => {
 
 describe('mprage', () => {
   const seq = ['--flip', '9', '--spoil', '50', '--tr', '7', '--td1', '330', '--td2', '830', '--np', '160'];
-  test('two tissues: the EPG image signals of the library and of the previous site', () => {
+  test('two tissues: the EPG image signals of the library, corrected on the previous site case', () => {
     const out = json(['mprage', '--tissue-a', '1,1450,100', '--tissue-b', '0.92,750,75', ...seq]);
     const ref = lib.simulateMprageImage(
       { pd: 1, t1: 1450, t2: 100 },
@@ -132,8 +132,9 @@ describe('mprage', () => {
     );
     assert.equal(out.signalA, ref.signalA);
     assert.equal(out.signalB, ref.signalB);
-    assert.ok(Math.abs(out.signalA - 0.024424690025312324) < 5e-13);
-    assert.ok(Math.abs(out.signalB - 0.047124053975078295) < 5e-13);
+    // Corrected EPG (#2); the 2012 algorithm gave 0.024424690025312324 and 0.047124053975078295.
+    assert.ok(Math.abs(out.signalA - 0.02435879570540178) < 5e-13);
+    assert.ok(Math.abs(out.signalB - 0.047107333947596135) < 5e-13);
     assert.equal(out.steadyState, true);
   });
 
