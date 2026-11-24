@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import * as library from '../dist/index.js';
 
 const lib = library as unknown as Record<string, unknown>;
-const readme = readFileSync('README.md', 'utf8');
+const readme = readFileSync('README.md', 'utf8').replaceAll('\r\n', '\n');
 
 describe('README', () => {
   it('runs its example as published and prints what its comments say', () => {
