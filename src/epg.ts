@@ -3,7 +3,16 @@
  *
  * Port of the reference Java implementation published with
  * "Optimized inversion-prepared gradient echo imaging" (J Magn Reson Imaging,
- * doi:10.1002/jmri.23669), https://github.com/mimrtl/MPRAGE_Simulator.
+ * doi:10.1002/jmri.23669), https://github.com/mimrtl/MPRAGE_Simulator, with
+ * one correction. The 2012 code applied readout pulse j, and the relaxation
+ * after it, to EPG orders 0..j only. That is exact in the first inversion
+ * cycle, where no higher order is populated yet, but the Z states that
+ * survive TD2 carry orders up to np - 1 into the next cycle (and further in
+ * each cycle after it), and the early pulses of that cycle neither rotated
+ * nor relaxed them. Here every pulse acts on every order that can be
+ * non-zero, up to an order above which the dropped states provably change no
+ * echo by more than 1e-12 PD (see orderLimit). The first cycle is computed
+ * exactly as before.
  */
 import { DEG, linspace } from './signal.js';
 import { assertValid, checkMprage } from './validate.js';
@@ -30,6 +39,11 @@ export interface MprageSequence {
   np: number;
   /** Assume transverse magnetisation is fully destroyed each TR. */
   idealSpoiling?: boolean;
+  /**
+   * Most inversion cycles to run while approaching the longitudinal steady
+   * state (default 25). 1 runs only the first cycle, from equilibrium.
+   */
+  maxLoops?: number;
 }
 
 export interface EpgResult {
@@ -45,13 +59,55 @@ export interface EpgResult {
 
 const MAX_LOOPS = 25;
 const STEADY_STATE_EPS = 1e-10;
+/** Most that dropping the EPG orders above orderLimit() can change any echo, in units of PD. */
+const ORDER_EPS = 1e-12;
+
+/**
+ * Highest EPG order K the simulation keeps, for at most `loops` cycles.
+ *
+ * The populated orders grow by np - 1 in every inversion cycle, so `loops`
+ * cycles reach order loops * (np - 1) at most; keeping all of them is exact.
+ * The cost is bounded further by T2: an order-k state has spent at least k
+ * TRs as transverse magnetisation and needs k more to rephase into an echo.
+ *
+ * Bound. Let e_k = |F_k|^2 + |F_-k|^2 + 2|Z_k|^2 be the energy of order k
+ * (e_0 = |F_0|^2 + Z_0^2) and q = exp(-2 TR/T2). RF pulses preserve every e_k.
+ * T1/T2 decay and the shift of F by one order per TR increase neither
+ * N+ = sqrt(sum_k q^-k e_k) nor N- = sqrt(sum_k q^k e_k): a shifted F state
+ * moves one order and loses a factor q of its energy. TD2 spoiling only
+ * removes energy, and the inversion leaves no transverse magnetisation for
+ * the TD1 shift to act on (up to sin(pi) ~ 1e-16). N+ starts at PD and the
+ * recovery term adds at most PD (1 - E1) <= PD tau/T1 per interval tau, so
+ * after a time t, |F_(K+1)| <= q^((K+1)/2) PD (1 + t/T1). Dropping that
+ * state is a perturbation with N- = q^((K+1)/2) |F_(K+1)|; N- cannot grow
+ * and bounds |F_0|, so it changes no later echo by more than
+ * q^(K+1) PD (1 + t/T1). At most loops (np + 1) states are dropped, so all
+ * echoes stay within ORDER_EPS * PD of the untruncated EPG when
+ *   (K + 1) * 2 TR/T2 >= ln(loops (np + 1) (1 + span/T1) / ORDER_EPS),
+ * span being the duration of `loops` cycles. K is never below np - 1, so the
+ * first cycle is always computed in full.
+ */
+function orderLimit(
+  t1: number,
+  t2: number,
+  seq: MprageSequence,
+  np: number,
+  loops: number,
+): number {
+  const grown = loops * (np - 1);
+  const steps = loops * (np + 1);
+  const span = loops * (np * seq.tr + seq.td1 + seq.td2);
+  const relaxed = Math.ceil((Math.log((steps * (1 + span / t1)) / ORDER_EPS) * t2) / (2 * seq.tr));
+  return Math.max(np - 1, Math.min(grown, relaxed));
+}
 
 /** Apply an RF pulse (flip `angle`, phase `phi`) to EPG states k = 0..kMax. */
 function applyPulse(
   angle: number,
   phi: number,
   kMax: number,
-  np: number,
+  /** Array index of order 0 in fx, fy, pfx and pfy. */
+  centre: number,
   fx: Float64Array,
   fy: Float64Array,
   zx: Float64Array,
@@ -72,8 +128,8 @@ function applyPulse(
   const ec = e * c;
   const fc = f * c;
   for (let k = 0; k <= kMax; k++) {
-    const n = np + k;
-    const m = np - k;
+    const n = centre + k;
+    const m = centre - k;
     const fxn = fx[n]!;
     const fyn = fy[n]!;
     const fxm = fx[m]!;
@@ -104,31 +160,42 @@ export function simulateMprage(tissue: MprageTissue, seq: MprageSequence): EpgRe
   const ed12 = Math.exp(-seq.td1 / t2);
   const ed21 = Math.exp(-seq.td2 / t1);
 
-  const fx = new Float64Array(2 * np + 2);
-  const fy = new Float64Array(2 * np + 2);
-  const pfx = new Float64Array(2 * np + 2);
-  const pfy = new Float64Array(2 * np + 2);
-  const zx = new Float64Array(np + 2);
-  const zy = new Float64Array(np + 2);
-  const pzx = new Float64Array(np + 2);
-  const pzy = new Float64Array(np + 2);
-  const zxPrev = new Float64Array(np + 2).fill(Infinity);
-  const zyPrev = new Float64Array(np + 2).fill(Infinity);
+  // F_k is stored at fx[centre + k] (k = -kCap..kCap + 1), Z_k at zx[k + 1].
+  // With ideal spoiling only order 0 is ever populated, and the arrays have
+  // the size of the 2012 code.
+  const maxLoops = seq.maxLoops ?? MAX_LOOPS;
+  const kCap = seq.idealSpoiling ? np - 1 : orderLimit(t1, t2, seq, np, maxLoops);
+  const centre = kCap + 1;
+  const fx = new Float64Array(2 * kCap + 4);
+  const fy = new Float64Array(2 * kCap + 4);
+  const pfx = new Float64Array(2 * kCap + 4);
+  const pfy = new Float64Array(2 * kCap + 4);
+  const zx = new Float64Array(kCap + 3);
+  const zy = new Float64Array(kCap + 3);
+  const pzx = new Float64Array(kCap + 3);
+  const pzy = new Float64Array(kCap + 3);
+  // The steady-state test looks at orders 0..np, as in the 2012 code.
+  const tested = np + 2;
+  const zxPrev = new Float64Array(tested).fill(Infinity);
+  const zyPrev = new Float64Array(tested).fill(Infinity);
   zx[1] = m0;
 
   const re = new Float64Array(np);
   const im = new Float64Array(np);
   const phase = new Float64Array(np);
 
+  // Highest order populated when an inversion cycle starts: Z_0 alone in the
+  // first cycle, then every Z order the previous readout train reached.
+  let top = 0;
   let loops = 0;
   let steadyState = false;
-  while (!steadyState && loops < MAX_LOOPS) {
+  while (!steadyState && loops < maxLoops) {
     loops++;
 
     // Inversion pulse followed by the TD1 delay.
-    applyPulse(Math.PI, 0, np - 1, np, fx, fy, zx, zy, pfx, pfy, pzx, pzy);
-    for (let k = -(np - 1); k <= np - 1; k++) {
-      const n = np + k;
+    applyPulse(Math.PI, 0, top, centre, fx, fy, zx, zy, pfx, pfy, pzx, pzy);
+    for (let k = -top; k <= top; k++) {
+      const n = centre + k;
       fx[n + 1] = pfx[n]! * ed12;
       fy[n + 1] = pfy[n]! * ed12;
       if (k > 0) zx[k + 1] = pzx[k + 1]! * ed11;
@@ -136,18 +203,23 @@ export function simulateMprage(tissue: MprageTissue, seq: MprageSequence): EpgRe
       if (k >= 0) zy[k + 1] = pzy[k + 1]! * ed11;
     }
 
-    // Readout train with quadratic RF phase cycling.
+    // Readout train with quadratic RF phase cycling. Before pulse j, orders up
+    // to top + j can be populated (one more per TR), and the pulse and the
+    // relaxation after it act on all of them. In the first cycle top = 0, so
+    // pulse j acts on orders 0..j, exactly as in the 2012 code.
     let phi = 0;
     let inc = 0;
+    let kMax = 0;
     for (let j = 0; j < np; j++) {
       inc = (inc + increment) % twoPi;
       phi = (phi + inc) % twoPi;
-      applyPulse(alpha, phi, j, np, fx, fy, zx, zy, pfx, pfy, pzx, pzy);
-      re[j] = pfx[np]!;
-      im[j] = pfy[np]!;
+      kMax = Math.min(top + j, kCap);
+      applyPulse(alpha, phi, kMax, centre, fx, fy, zx, zy, pfx, pfy, pzx, pzy);
+      re[j] = pfx[centre]!;
+      im[j] = pfy[centre]!;
       phase[j] = phi;
-      for (let k = -j; k <= j; k++) {
-        const n = np + k;
+      for (let k = -kMax; k <= kMax; k++) {
+        const n = centre + k;
         fx[n + 1] = pfx[n]! * er2;
         fy[n + 1] = pfy[n]! * er2;
         if (k > 0) zx[k + 1] = pzx[k + 1]! * er1;
@@ -161,22 +233,24 @@ export function simulateMprage(tissue: MprageTissue, seq: MprageSequence): EpgRe
     }
 
     // TD2 recovery: transverse magnetisation is assumed fully dephased.
-    fx.fill(0, 0, 2 * np);
-    fy.fill(0, 0, 2 * np);
+    fx.fill(0);
+    fy.fill(0);
     const e = ed21 * er1;
-    for (let k = 0; k <= np - 1; k++) {
+    for (let k = 0; k <= kMax; k++) {
       if (k > 0) zx[k + 1] = pzx[k + 1]! * e;
       else zx[1] = pzx[1]! * e + m0 * (1 - e);
       zy[k + 1] = pzy[k + 1]! * e;
     }
+    // Ideal spoiling leaves every order above 0 exactly zero.
+    top = seq.idealSpoiling ? 0 : kMax;
 
     let err = 0;
-    for (let k = 0; k < zx.length; k++) {
+    for (let k = 0; k < tested; k++) {
       err += Math.abs(Math.hypot(zx[k]!, zy[k]!) - Math.hypot(zxPrev[k]!, zyPrev[k]!));
     }
     steadyState = err < STEADY_STATE_EPS;
-    zxPrev.set(zx);
-    zyPrev.set(zy);
+    zxPrev.set(zx.subarray(0, tested));
+    zyPrev.set(zy.subarray(0, tested));
   }
 
   return { re, im, phase, loops, steadyState };

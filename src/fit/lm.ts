@@ -153,14 +153,19 @@ export class Fitter {
         }
         break;
       case 'ir': {
+        // g = 1 - 2A e^(-TI k) + (2A - 1) e^(-TR k): see inversionRecoverySignal.
+        // A is fitted as the inversion efficiency itself and M0 as the
+        // equilibrium magnetisation; for A = 1 (model t1ir) this is the
+        // usual 1 - 2 e^(-TI k) + e^(-TR k).
         const eTr = Number.isFinite(tr) ? Math.exp(-tr * k) : 0;
         const dTr = Number.isFinite(tr) ? -tr * eTr : 0;
+        const b = 2 * a - 1;
         for (let i = 0; i < n; i++) {
           const e = Math.exp(-x[i]! * k);
-          g[i] = 1 - 2 * a * e + eTr;
+          g[i] = 1 - 2 * a * e + b * eTr;
           if (derivatives) {
-            dgk[i] = 2 * a * x[i]! * e + dTr;
-            dga[i] = -2 * e;
+            dgk[i] = 2 * a * x[i]! * e + b * dTr;
+            dga[i] = -2 * e + 2 * eTr;
           }
         }
         break;
@@ -459,7 +464,10 @@ export function evaluateModel(
         g = Math.exp(-xi * k);
         break;
       case 'ir':
-        g = 1 - 2 * fit.a * Math.exp(-xi * k) + (Number.isFinite(tr) ? Math.exp(-tr * k) : 0);
+        g =
+          1 -
+          2 * fit.a * Math.exp(-xi * k) +
+          (Number.isFinite(tr) ? (2 * fit.a - 1) * Math.exp(-tr * k) : 0);
         break;
       case 'vfa': {
         const e1 = Math.exp(-tr * k);
